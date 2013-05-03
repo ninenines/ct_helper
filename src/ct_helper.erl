@@ -26,6 +26,5 @@
 	-> {CaCert::der_encoded(), Cert::der_encoded(), Key::key()}.
 make_certs() ->
 	CaInfo = {CaCert, _} = erl_make_certs:make_cert([{key, dsa}]),
-	{Cert, Key0} = erl_make_certs:make_cert([{key, dsa}, {issuer, CaInfo}]),
-	Key = erlang:delete_element(3, Key0),
-	{CaCert, Cert, Key}.
+	{Cert, {Asn1Type, Der, _}} = erl_make_certs:make_cert([{key, dsa}, {issuer, CaInfo}]),
+	{CaCert, Cert, {Asn1Type, Der}}.
