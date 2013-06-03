@@ -15,11 +15,33 @@
 %% @doc Helper functions for common_test suites.
 -module(ct_helper).
 
+-export([create_static_dir/1]).
+-export([delete_static_dir/1]).
 -export([make_certs/0]).
 
 -type der_encoded() :: binary().
 -type key() :: {'RSAPrivateKey' | 'DSAPrivateKey' | 'PrivateKeyInfo',
 	der_encoded()}.
+
+create_static_dir(Path) ->
+	ok = file:make_dir(Path),
+	ok = file:make_dir(Path ++ "/directory"),
+	ok = file:write_file(Path ++ "/unknown", "File with no extension.\n"),
+	ok = file:write_file(Path ++ "/style.css", "body{color:red}\n"),
+	ok = file:write_file(Path ++ "/index.html",
+		"<html><body>Hello!</body></html>\n"),
+	ok = file:write_file(Path ++ "/unreadable", "unreadable\n"),
+	ok = file:change_mode(Path ++ "/unreadable", 8#0333),
+	ok.
+
+delete_static_dir(Path) ->
+	ok = file:delete(Path ++ "/unreadable"),
+	ok = file:delete(Path ++ "/index.html"),
+	ok = file:delete(Path ++ "/style.css"),
+	ok = file:delete(Path ++ "/unknown"),
+	ok = file:del_dir(Path ++ "/directory"),
+	ok = file:del_dir(Path),
+	ok.
 
 %% @doc Create a set of certificates.
 -spec make_certs()
