@@ -17,6 +17,7 @@
 
 -export([create_static_dir/1]).
 -export([delete_static_dir/1]).
+-export([get_loopback_mtu/0]).
 -export([make_certs/0]).
 
 -type der_encoded() :: binary().
@@ -42,6 +43,15 @@ delete_static_dir(Path) ->
 	ok = file:del_dir(Path ++ "/directory"),
 	ok = file:del_dir(Path),
 	ok.
+
+get_loopback_mtu() ->
+	{ok, Interfaces} = inet:getiflist(),
+	[LocalInterface | _ ] = lists:filter(fun(Interface) ->
+		{ok, [{flags, Flags}]} = inet:ifget(Interface, [flags]),
+		lists:member(loopback, Flags)
+	end, Interfaces),
+	{ok, [{mtu, MTU}]} = inet:ifget(LocalInterface, [mtu]),
+	MTU.
 
 %% @doc Create a set of certificates.
 -spec make_certs()
