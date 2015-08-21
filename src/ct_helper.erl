@@ -24,6 +24,7 @@
 -export([ignore/3]).
 -export([make_certs/0]).
 -export([make_certs_in_ets/0]).
+-export([name/0]).
 -export([start/1]).
 
 -type der_encoded() :: binary().
@@ -121,6 +122,11 @@ make_certs_in_ets() ->
 		{heir, Pid, undefined}]),
 	ets:insert(?MODULE, {cert_opts, CertOpts}),
 	ok.
+
+%% @doc Return the name of the calling function.
+
+name() ->
+	element(2, hd(tl(element(2, process_info(self(), current_stacktrace))))).
 
 %% @doc Start and stop applications and their dependencies.
 
