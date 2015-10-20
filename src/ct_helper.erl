@@ -29,6 +29,7 @@
 -export([is_process_down/2]).
 -export([make_certs/0]).
 -export([make_certs_in_ets/0]).
+-export([make_certs_in_dir/1]).
 -export([name/0]).
 -export([start/1]).
 
@@ -199,6 +200,22 @@ make_certs() ->
 	CaInfo = {CaCert, _} = erl_make_certs:make_cert([]),
 	{Cert, {Asn1Type, Der, _}} = erl_make_certs:make_cert([{issuer, CaInfo}]),
 	{CaCert, Cert, {Asn1Type, Der}}.
+
+%% @doc Create a set of certificates and store them in a directory.
+
+make_certs_in_dir(Dir) ->
+	{CaCert, Cert, Key} = make_certs(),
+	CertFile = filename:join(Dir, "cert.pem"),
+	CaCertsFile = filename:join(Dir, "cacerts.pem"),
+	KeyFile = filename:join(Dir, "key.pem"),
+	CertPem = public_key:pem_encode([{'Certificate', Cert, not_encrypted}]),
+	CaCertsPem = public_key:pem_encode([{'Certificate', CaCert, not_encrypted}]),
+	{KeyAsn1Type, KeyDer} = Key,
+	KeyPem = public_key:pem_encode([{KeyAsn1Type, KeyDer, not_encrypted}]),
+	ok = file:write_file(CertFile, CertPem),
+	ok = file:write_file(CaCertsFile, CaCertsPem),
+	ok = file:write_file(KeyFile, KeyPem),
+	{CaCertsFile, CertFile, KeyFile}.
 
 %% @doc Create a set of certificates and store them in an ets table.
 %%
