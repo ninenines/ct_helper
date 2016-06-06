@@ -87,7 +87,7 @@ handle_event(Event = {error, GL, {emulator, _, Msg}}, State)
 			end
 	end;
 handle_event(Event = {error, GL,
-		{_, "Ranch listener" ++ _, [_, _, Pid, {cowboy_handler, [_, _, _,
+		{_, "Ranch listener" ++ _, [_, _, _, Pid, {cowboy_handler, [_, _, _,
 			{stacktrace, [{M, F, A, _}|_]}|_]}]}},
 		State) when node(GL) =:= node() ->
 	A2 = if is_list(A) -> length(A); true -> A end,
