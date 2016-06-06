@@ -55,9 +55,11 @@ config(Key, Config) ->
 %% @doc Create a directory with various useful files for testing.
 
 create_static_dir(Path) ->
-	ok = file:make_dir(Path),
+	ok = filelib:ensure_dir(Path ++ "/file"),
 	ok = file:make_dir(Path ++ "/directory"),
 	ok = file:write_file(Path ++ "/unknown", "File with no extension.\n"),
+	ok = file:write_file(Path ++ "/file.cowboy", "File with custom extension.\n"),
+	ok = file:write_file(Path ++ "/plain.txt", "Timeless space.\n"),
 	ok = file:write_file(Path ++ "/style.css", "body{color:red}\n"),
 	ok = file:write_file(Path ++ "/index.html",
 		"<html><body>Hello!</body></html>\n"),
@@ -71,6 +73,8 @@ delete_static_dir(Path) ->
 	ok = file:delete(Path ++ "/unreadable"),
 	ok = file:delete(Path ++ "/index.html"),
 	ok = file:delete(Path ++ "/style.css"),
+	ok = file:delete(Path ++ "/plain.txt"),
+	ok = file:delete(Path ++ "/file.cowboy"),
 	ok = file:delete(Path ++ "/unknown"),
 	ok = file:del_dir(Path ++ "/directory"),
 	ok = file:del_dir(Path),
