@@ -112,8 +112,8 @@ ignore(M, F, A) ->
 -spec make_certs()
 	-> {CaCert::der_encoded(), Cert::der_encoded(), Key::key()}.
 make_certs() ->
-	CaInfo = {CaCert, _} = erl_make_certs:make_cert([{key, dsa}]),
-	{Cert, {Asn1Type, Der, _}} = erl_make_certs:make_cert([{key, dsa}, {issuer, CaInfo}]),
+	CaInfo = {CaCert, _} = erl_make_certs:make_cert([{key, rsa}]),
+	{Cert, {Asn1Type, Der, _}} = erl_make_certs:make_cert([{key, rsa}, {issuer, CaInfo}]),
 	{CaCert, Cert, {Asn1Type, Der}}.
 
 %% @doc Create a set of certificates and store them in an ets table.
