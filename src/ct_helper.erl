@@ -119,10 +119,39 @@ make_certs() ->
 	{CaCert, Cert, {Asn1Type, Der}}.
 
 %% @doc Create a set of certificates and store them in an ets table.
+%%
+%% The verify options are there so that:
+%%
+%% - We retrieve client certificates when they are provided.
+%% - We accept self-signed certificates.
+%%
+%% They have no effect otherwise.
+
+%% Taken from http://erlang.org/doc/apps/public_key/public_key_records.html
+-record('Extension', {
+	extnID,    % id_extensions() | oid()
+	critical,  % boolean()
+	extnValue  % der_encoded()
+}).
 
 make_certs_in_ets() ->
-	{_, Cert, Key} = ct_helper:make_certs(),
-	CertOpts = [{cert, Cert}, {key, Key}],
+	{CaCert, Cert, Key} = ct_helper:make_certs(),
+	VerifyFun = fun
+		(_, {bad_cert, _}, UserState) ->
+			{valid, UserState};
+		(_, {extension, #'Extension'{critical=true}}, UserState) ->
+			{valid, UserState};
+		(_, {extension, _}, UserState) ->
+			{unknown, UserState};
+		(_, valid, UserState) ->
+			{valid, UserState};
+		(_, valid_peer, UserState) ->
+			{valid, UserState}
+	end,
+	CertOpts = [
+		{cert, Cert}, {key, Key}, {cacerts, [CaCert]},
+		{verify, verify_peer}, {verify_fun, {VerifyFun, []}}
+	],
 	Pid = spawn(fun() -> receive after infinity -> ok end end),
 	?MODULE = ets:new(?MODULE, [ordered_set, public, named_table,
 		{heir, Pid, undefined}]),
