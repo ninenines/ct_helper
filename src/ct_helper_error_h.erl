@@ -86,6 +86,20 @@ handle_event(Event = {error, GL, {emulator, _, Msg}}, State)
 					{ok, State}
 			end
 	end;
+%% Cowboy 2.0.
+handle_event(Event = {error, GL,
+		{_, "Ranch listener" ++ _, [_, _, _, Pid, _, [{M, F, A, _}|_]|_]}},
+		State) when node(GL) =:= node() ->
+	A2 = if is_list(A) -> length(A); true -> A end,
+	Crash = {Pid, M, F, A2},
+	case lists:member(Crash, State) of
+		true ->
+			{ok, lists:delete(Crash, State)};
+		false ->
+			write_event(Event),
+			{ok, State}
+	end;
+%% Cowboy 1.0.
 handle_event(Event = {error, GL,
 		{_, "Ranch listener" ++ _, [_, _, _, Pid, {cowboy_handler, [_, _, _,
 			{stacktrace, [{M, F, A, _}|_]}|_]}]}},
