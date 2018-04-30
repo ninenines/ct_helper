@@ -17,6 +17,7 @@
 
 %% Public interface.
 -export([ignore/3]).
+-export([ignore/4]).
 
 %% gen_event.
 -export([init/1]).
@@ -28,9 +29,13 @@
 
 %% Public interface.
 
-%% Ignore crashes from Pid occuring in M:F/A.
+%% Ignore crashes from self() occuring in M:F/A.
 ignore(M, F, A) ->
-	gen_event:call(error_logger, ?MODULE, {expect, {self(), M, F, A}}).
+	ignore(self(), M, F, A).
+
+%% Ignore crashes from Pid occuring in M:F/A.
+ignore(Pid, M, F, A) ->
+	gen_event:call(error_logger, ?MODULE, {expect, {Pid, M, F, A}}).
 
 %% gen_event.
 
@@ -86,7 +91,20 @@ handle_event(Event = {error, GL, {emulator, _, Msg}}, State)
 					{ok, State}
 			end
 	end;
-%% Cowboy 2.0.
+%% Cowboy 2.0: error coming from Ranch.
+handle_event(Event = {error, GL,
+		{_, "Ranch listener" ++ _, [_, _, Pid, {_, [{M, F, A, _}|_]}]}},
+		State) when node(GL) =:= node() ->
+	A2 = if is_list(A) -> length(A); true -> A end,
+	Crash = {Pid, M, F, A2},
+	case lists:member(Crash, State) of
+		true ->
+			{ok, lists:delete(Crash, State)};
+		false ->
+			write_event(Event),
+			{ok, State}
+	end;
+%% Cowboy 2.0: error coming from Cowboy.
 handle_event(Event = {error, GL,
 		{_, "Ranch listener" ++ _, [_, _, _, Pid, _, [{M, F, A, _}|_]|_]}},
 		State) when node(GL) =:= node() ->
