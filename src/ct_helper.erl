@@ -159,9 +159,19 @@ make_certs_in_ets() ->
 	ok.
 
 %% @doc Return the name of the calling function.
+%%
+%% With a native VM we always return the current pid because
+%% the stacktrace is not as well maintained and may not return
+%% the correct function name, especially when there is a mix
+%% of normal and native code.
 
 name() ->
-	element(2, hd(tl(element(2, process_info(self(), current_stacktrace))))).
+	case code:is_module_native(kernel) of
+		true ->
+			self();
+		false ->
+			element(2, hd(tl(element(2, process_info(self(), current_stacktrace)))))
+	end.
 
 %% @doc Start and stop applications and their dependencies.
 
