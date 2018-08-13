@@ -35,7 +35,8 @@ ignore(M, F, A) ->
 
 %% Ignore crashes from Pid occuring in M:F/A.
 ignore(Pid, M, F, A) ->
-	gen_event:call(error_logger, ?MODULE, {expect, {Pid, M, F, A}}).
+	error_logger ! {expect, {Pid, M, F, A}},
+	ok.
 
 %% gen_event.
 
@@ -137,11 +138,11 @@ handle_event(Event = {_, GL, _}, State) when node(GL) =:= node() ->
 handle_event(_, State) ->
 	{ok, State}.
 
-handle_call({expect, Crash}, State) ->
-	{ok, ok, [Crash, Crash|State]};
 handle_call(_, State) ->
 	{ok, {error, bad_query}, State}.
 
+handle_info({expect, Crash}, State) ->
+	{ok, [Crash, Crash|State]};
 handle_info(_, State) ->
 	{ok, State}.
 
