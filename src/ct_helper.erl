@@ -21,6 +21,9 @@
 -export([doc/1]).
 -export([get_certs_from_ets/0]).
 -export([get_loopback_mtu/0]).
+-export([get_parent_pid/1]).
+-export([get_remote_pid_tcp/1]).
+-export([get_remote_pid_tls/1]).
 -export([ignore/3]).
 -export([make_certs/0]).
 -export([make_certs_in_ets/0]).
@@ -30,6 +33,8 @@
 -type der_encoded() :: binary().
 -type key() :: {'RSAPrivateKey' | 'DSAPrivateKey' | 'PrivateKeyInfo',
 	der_encoded()}.
+
+-include_lib("ssl/src/ssl_connection.hrl").
 
 %% @doc List all test cases in the suite.
 %%
@@ -104,6 +109,40 @@ get_loopback_mtu() ->
 	{ok, [{mtu, MTU}]} = inet:ifget(LocalInterface, [mtu]),
 	MTU.
 
+%% @doc Get the parent pid of a proc_lib process.
+
+get_parent_pid(Pid) ->
+	{_, ProcDict} = process_info(Pid, dictionary),
+	{_, [Parent|_]} = lists:keyfind('$ancestors', 1, ProcDict),
+	Parent.
+
+%% @doc Find the pid of the remote end of a TCP socket.
+%%
+%% This function must be run on the same node as the pid we want.
+
+get_remote_pid_tcp(Socket) when is_port(Socket) ->
+	get_remote_pid_tcp(inet:sockname(Socket));
+get_remote_pid_tcp(SockName) ->
+	AllPorts = [{P, erlang:port_info(P)} || P <- erlang:ports()],
+	[Pid] = [
+		proplists:get_value(connected, I)
+	|| {P, I} <- AllPorts,
+		I =/= undefined,
+		proplists:get_value(name, I) =:= "tcp_inet",
+		inet:peername(P) =:= SockName],
+	Pid.
+
+%% @doc Find the pid of the remote end of a TLS socket.
+%%
+%% This function must be run on the same node as the pid we want.
+
+get_remote_pid_tls(Socket) ->
+	%% This gives us the pid of the sslsocket process.
+	%% We must introspect this process in order to retrieve the connection pid.
+	TLSPid = get_remote_pid_tcp(ssl:sockname(Socket)),
+	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
+	UserPid.
+
 %% @doc Ignore crashes from Pid occuring in M:F/A.
 
 ignore(M, F, A) ->
@@ -126,13 +165,6 @@ make_certs() ->
 %% - We accept self-signed certificates.
 %%
 %% They have no effect otherwise.
-
-%% Taken from http://erlang.org/doc/apps/public_key/public_key_records.html
--record('Extension', {
-	extnID,    % id_extensions() | oid()
-	critical,  % boolean()
-	extnValue  % der_encoded()
-}).
 
 make_certs_in_ets() ->
 	{CaCert, Cert, Key} = ct_helper:make_certs(),
