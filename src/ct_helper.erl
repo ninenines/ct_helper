@@ -25,6 +25,8 @@
 -export([get_remote_pid_tcp/1]).
 -export([get_remote_pid_tls/1]).
 -export([ignore/3]).
+-export([is_process_down/1]).
+-export([is_process_down/2]).
 -export([make_certs/0]).
 -export([make_certs_in_ets/0]).
 -export([name/0]).
@@ -147,6 +149,23 @@ get_remote_pid_tls(Socket) ->
 
 ignore(M, F, A) ->
 	ct_helper_error_h:ignore(M, F, A).
+
+%% @doco Similar to erlang:is_process_alive/1 except
+%% it uses monitors and waits up to a timeout.
+%%
+%% The return value is also the opposite of alive (down).
+
+is_process_down(Pid) ->
+	is_process_down(Pid, 1000).
+
+is_process_down(Pid, Timeout) ->
+	MRef = monitor(process, Pid),
+	receive
+		{'DOWN', MRef, process, Pid, _} ->
+			true
+	after Timeout ->
+		false
+	end.
 
 %% @doc Create a set of certificates.
 
