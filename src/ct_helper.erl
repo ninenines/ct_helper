@@ -142,8 +142,17 @@ get_remote_pid_tls(Socket) ->
 	%% This gives us the pid of the sslsocket process.
 	%% We must introspect this process in order to retrieve the connection pid.
 	TLSPid = get_remote_pid_tcp(ssl:sockname(Socket)),
+	get_tls_state(TLSPid).
+
+-if(?OTP_RELEASE >= 22).
+get_tls_state(TLSPid) ->
+	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
+	UserPid.
+-else.
+get_tls_state(TLSPid) ->
 	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
 	UserPid.
+-endif.
 
 %% @doc Ignore crashes from Pid occuring in M:F/A.
 
