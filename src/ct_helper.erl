@@ -150,9 +150,16 @@ get_tls_state(TLSPid) ->
 	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
 	UserPid.
 -else.
+%% This is defined in ssl_record.hrl starting from OTP-21.3.
+-ifdef(KNOWN_RECORD_TYPE).
+get_tls_state(TLSPid) ->
+	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
+	UserPid.
+-else.
 get_tls_state(TLSPid) ->
 	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
 	UserPid.
+-endif.
 -endif.
 -else.
 get_tls_state(TLSPid) ->
