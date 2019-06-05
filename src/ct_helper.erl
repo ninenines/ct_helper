@@ -31,6 +31,8 @@
 -export([make_certs_in_ets/0]).
 -export([name/0]).
 -export([start/1]).
+-export([decompose_vsn/1]).
+-export([decompose_vsn/2]).
 
 -type der_encoded() :: binary().
 -type key() :: {'RSAPrivateKey' | 'DSAPrivateKey' | 'PrivateKeyInfo',
@@ -262,3 +264,25 @@ do_start(App) ->
 			do_start(Dep),
 			do_start(App)
 	end.
+
+%% @doc Decompose a version string.
+
+-spec decompose_vsn(string()) -> [integer() | string()].
+decompose_vsn(Vsn) ->
+	decompose_vsn(Vsn, $.).
+
+-spec decompose_vsn(string(), char()) -> [integer() | string()].
+decompose_vsn(Vsn, Sep) ->
+	decompose_vsn(Vsn, Sep, [], []).
+
+decompose_vsn([], _, Acc1, Acc2) ->
+	lists:reverse([begin
+		Tok1 = lists:reverse(Tok0),
+		try list_to_integer(Tok1)
+		catch error:badarg -> Tok1
+		end
+	end || Tok0 <- [Acc1|Acc2]]);
+decompose_vsn([Sep|Vsn], Sep, Acc1, Acc2) ->
+	decompose_vsn(Vsn, Sep, [], [Acc1|Acc2]);
+decompose_vsn([C|Vsn], Sep, Acc1, Acc2) ->
+	decompose_vsn(Vsn, Sep, [C|Acc1], Acc2).
