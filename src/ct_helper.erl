@@ -210,7 +210,7 @@ make_certs() ->
 %% They have no effect otherwise.
 
 make_certs_in_ets() ->
-	{CaCert, Cert, Key} = ct_helper:make_certs(),
+	{CaCert, Cert, Key} = make_certs(),
 	VerifyFun = fun
 		(_, {bad_cert, _}, UserState) ->
 			{valid, UserState};
@@ -225,7 +225,12 @@ make_certs_in_ets() ->
 	end,
 	CertOpts = [
 		{cert, Cert}, {key, Key}, {cacerts, [CaCert]},
-		{verify, verify_peer}, {verify_fun, {VerifyFun, []}}
+		{verify, verify_peer}, {verify_fun, {VerifyFun, []}},
+		%% We stick to TLS 1.2 because our certificates are not
+		%% secure enough for use with TLS 1.3. This can be resolved
+		%% when we no longer depend on erl_make_certs for generating
+		%% them.
+		{versions, ['tlsv1.2']}
 	],
 	Pid = spawn(fun() -> receive after infinity -> ok end end),
 	?MODULE = ets:new(?MODULE, [ordered_set, public, named_table,
