@@ -178,7 +178,7 @@ make_tbs(SubjectKey, Opts) ->
 		      subject(proplists:get_value(subject, Opts),false)
 	      end,
 
-    {#'OTPTBSCertificate'{serialNumber = trunc(random:uniform()*100000000)*10000 + 1,
+    {#'OTPTBSCertificate'{serialNumber = trunc(rand:uniform()*100000000)*10000 + 1,
 			  signature    = SignAlgo,
 			  issuer       = Issuer,
 			  validity     = validity(Opts),
@@ -455,7 +455,8 @@ odd_rand(Size) ->
     odd_rand(Min, Max).
 
 odd_rand(Min,Max) ->
-    Rand = crypto:rand_uniform(Min,Max),
+    Delta = Max - Min,
+    Rand = Min + trunc(rand:uniform() * Delta),
     case Rand rem 2 of
 	0 -> 
 	    Rand + 1;
