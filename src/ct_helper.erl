@@ -246,12 +246,7 @@ make_certs_in_ets() ->
 %% of normal and native code.
 
 name() ->
-	case code:is_module_native(kernel) of
-		true ->
-			self();
-		false ->
-			element(2, hd(tl(element(2, process_info(self(), current_stacktrace)))))
-	end.
+	element(2, hd(tl(element(2, process_info(self(), current_stacktrace))))).
 
 %% @doc Start and stop applications and their dependencies.
 
