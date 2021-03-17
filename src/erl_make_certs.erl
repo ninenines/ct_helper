@@ -455,7 +455,8 @@ odd_rand(Size) ->
     odd_rand(Min, Max).
 
 odd_rand(Min,Max) ->
-    Rand = rand:uniform(Min,Max),
+		Delta = Max - Min,
+    Rand = Min + rand:uniform() * Delta,
     case Rand rem 2 of
 	0 -> 
 	    Rand + 1;
