@@ -232,7 +232,7 @@ make_certs_in_ets() ->
 		%% them.
 		{versions, ['tlsv1.2']}
 	],
-	Pid = spawn(fun() -> receive after infinity -> ok end end),
+	Pid = spawn(fun() -> receive shutdown -> ok after infinity -> ok end end),
 	?MODULE = ets:new(?MODULE, [ordered_set, public, named_table,
 		{heir, Pid, undefined}]),
 	ets:insert(?MODULE, {cert_opts, CertOpts}),

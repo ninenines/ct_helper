@@ -156,9 +156,10 @@ code_change(_, State, _) ->
 %% Internal.
 
 write_event(Event) ->
-	error_logger_tty_h:write_event(
+	_ = error_logger_tty_h:write_event(
 		{erlang:universaltime(), Event},
-		io).
+		io),
+	ok.
 
 count_args("]" ++ _, N, 0) ->
 	N;

@@ -194,7 +194,7 @@ issuer(true, Opts, SubjectKey) ->
 issuer({Issuer, IssuerKey}, _Opts, _SubjectKey) when is_binary(Issuer) ->
     {issuer_der(Issuer), decode_key(IssuerKey)};
 issuer({File, IssuerKey}, _Opts, _SubjectKey) when is_list(File) ->
-    {ok, [{cert, Cert, _}|_]} = pem_to_der(File),
+    [{'Certificate', Cert, _}|_] = pem_to_der(File),
     {issuer_der(Cert), decode_key(IssuerKey)}.
 
 issuer_der(Issuer) ->
