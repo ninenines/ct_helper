@@ -197,19 +197,23 @@ is_process_down(Pid, Timeout) ->
 -spec make_certs()
 	-> {CaCert::der_encoded(), Cert::der_encoded(), Key::key()}.
 make_certs() ->
-	CaInfo = {CaCert, _} = erl_make_certs:make_cert([]),
-	{Cert, {Asn1Type, Der, _}} = erl_make_certs:make_cert([{issuer, CaInfo}]),
-	{CaCert, Cert, {Asn1Type, Der}}.
+	Opts = public_key:pkix_test_data(#{root => [{digest, sha256}], peer => [{digest, sha256}]}),
+	{
+		proplists:get_value(cacerts, Opts),
+		proplists:get_value(cert, Opts),
+		proplists:get_value(key, Opts)
+	}.
 
 %% @doc Create a set of certificates and store them in a directory.
 
 make_certs_in_dir(Dir) ->
-	{CaCert, Cert, Key} = make_certs(),
+	{CaCerts, Cert, Key} = make_certs(),
 	CertFile = filename:join(Dir, "cert.pem"),
 	CaCertsFile = filename:join(Dir, "cacerts.pem"),
 	KeyFile = filename:join(Dir, "key.pem"),
 	CertPem = public_key:pem_encode([{'Certificate', Cert, not_encrypted}]),
-	CaCertsPem = public_key:pem_encode([{'Certificate', CaCert, not_encrypted}]),
+	CaCertsPem = public_key:pem_encode(
+		[{'Certificate', CaCert, not_encrypted} || CaCert <- CaCerts]),
 	{KeyAsn1Type, KeyDer} = Key,
 	KeyPem = public_key:pem_encode([{KeyAsn1Type, KeyDer, not_encrypted}]),
 	ok = file:write_file(CertFile, CertPem),
@@ -227,7 +231,7 @@ make_certs_in_dir(Dir) ->
 %% They have no effect otherwise.
 
 make_certs_in_ets() ->
-	{CaCert, Cert, Key} = make_certs(),
+	{CaCerts, Cert, Key} = make_certs(),
 	VerifyFun = fun
 		(_, {bad_cert, _}, UserState) ->
 			{valid, UserState};
@@ -241,12 +245,10 @@ make_certs_in_ets() ->
 			{valid, UserState}
 	end,
 	CertOpts = [
-		{cert, Cert}, {key, Key}, {cacerts, [CaCert]},
+		{cert, Cert}, {key, Key}, {cacerts, CaCerts},
 		{verify, verify_peer}, {verify_fun, {VerifyFun, []}},
 		%% We stick to TLS 1.2 because our certificates are not
-		%% secure enough for use with TLS 1.3. This can be resolved
-		%% when we no longer depend on erl_make_certs for generating
-		%% them.
+		%% secure enough for use with TLS 1.3.
 		{versions, ['tlsv1.2']}
 	],
 	Pid = spawn(fun() -> receive shutdown -> ok after infinity -> ok end end),
