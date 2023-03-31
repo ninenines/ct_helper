@@ -197,7 +197,10 @@ is_process_down(Pid, Timeout) ->
 -spec make_certs()
 	-> {CaCert::der_encoded(), Cert::der_encoded(), Key::key()}.
 make_certs() ->
-	Opts = public_key:pkix_test_data(#{root => [{digest, sha256}], peer => [{digest, sha256}]}),
+	Opts = public_key:pkix_test_data(#{
+		root => [{digest, sha256}, {key, {rsa, 2048, 17}}],
+		peer => [{digest, sha256}, {key, {rsa, 2048, 17}}]
+	}),
 	{
 		proplists:get_value(cacerts, Opts),
 		proplists:get_value(cert, Opts),
