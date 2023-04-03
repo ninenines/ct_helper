@@ -150,7 +150,8 @@ get_remote_pid_tls(Socket) ->
 -ifdef(OTP_RELEASE).
 -if(?OTP_RELEASE >= 22).
 get_tls_state(TLSPid) ->
-	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
+	{_, #state{connection_env=ConnEnv}} = sys:get_state(TLSPid),
+	{_, UserPid} = element(2, ConnEnv), %% #connection_env.user_application
 	UserPid.
 -else.
 %% This is defined in ssl_record.hrl starting from OTP-21.3.
