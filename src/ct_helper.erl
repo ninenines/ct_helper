@@ -196,7 +196,7 @@ is_process_down(Pid, Timeout) ->
 %% @doc Create a set of certificates.
 
 -spec make_certs()
-	-> {CaCert::der_encoded(), Cert::der_encoded(), Key::key()}.
+	-> {[CaCert::der_encoded()], Cert::der_encoded(), Key::key()}.
 make_certs() ->
 	Opts = public_key:pkix_test_data(#{
 		root => [{digest, sha256}, {key, {rsa, 2048, 17}}],
