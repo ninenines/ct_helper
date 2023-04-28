@@ -200,7 +200,13 @@ is_process_down(Pid, Timeout) ->
 make_certs() ->
 	Opts = public_key:pkix_test_data(#{
 		root => [{digest, sha256}, {key, {rsa, 2048, 17}}],
-		peer => [{digest, sha256}, {key, {rsa, 2048, 17}}]
+		peer => [{digest, sha256}, {key, {rsa, 2048, 17}}, {extensions, [
+			#'Extension'{
+				extnID = ?'id-ce-subjectAltName',
+				extnValue = [{dNSName, "localhost"}],
+				critical = true
+			}
+		]}]
 	}),
 	{
 		proplists:get_value(cacerts, Opts),
