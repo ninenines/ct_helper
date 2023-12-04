@@ -58,11 +58,22 @@ handle_event({error_report, _, {_, crash_report,
 		State) ->
 	{ok, State};
 %% Ignore emulator reports that are a duplicate of what Ranch gives us.
-%%
-%% The emulator always sends strings for errors, which makes it very
-%% difficult to extract the information we need, hence the regexps.
+handle_event(Event = {error, GL, {emulator, "Error in process ~p" ++ _, Args}}, State)
+		when node(GL) =:= node(), is_list(Args) ->
+	[Pid, _Node, {_Error, [{Mod, Fun, Arity, _}|_]}] = Args,
+	Crash = {Pid, Mod, Fun, Arity},
+	case lists:member(Crash, State) of
+		true ->
+			{ok, lists:delete(Crash, State)};
+		false ->
+			write_event(Event),
+			{ok, State}
+	end;
+%% The emulator always sends strings for errors in older OTP versions,
+%% which makes it very difficult to extract the information we need,
+%% hence the regexps.
 handle_event(Event = {error, GL, {emulator, _, Msg}}, State)
-		when node(GL) =:= node() ->
+		when node(GL) =:= node(), is_list(Msg) ->
 	Result = re:run(Msg,
 		"Error in process ([^\s]+).+? with exit value: "
 			".+?{stacktrace,\\[{([^,]+),([^,]+),(.+)",
