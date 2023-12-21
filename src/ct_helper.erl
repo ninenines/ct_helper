@@ -24,6 +24,7 @@
 -export([get_parent_pid/1]).
 -export([get_remote_pid_tcp/1]).
 -export([get_remote_pid_tls/1]).
+-export([get_remote_pid_tls_state/1]).
 -export([ignore/3]).
 -export([is_process_down/1]).
 -export([is_process_down/2]).
@@ -145,28 +146,28 @@ get_remote_pid_tls(Socket) ->
 	%% This gives us the pid of the sslsocket process.
 	%% We must introspect this process in order to retrieve the connection pid.
 	TLSPid = get_remote_pid_tcp(ssl:sockname(Socket)),
-	get_tls_state(TLSPid).
+	get_remote_pid_tls_state(TLSPid).
 
 -ifdef(OTP_RELEASE).
 -if(?OTP_RELEASE >= 22).
-get_tls_state(TLSPid) ->
+get_remote_pid_tls_state(TLSPid) ->
 	{_, #state{connection_env=ConnEnv}} = sys:get_state(TLSPid),
 	{_, UserPid} = element(2, ConnEnv), %% #connection_env.user_application
 	UserPid.
 -else.
 %% This is defined in ssl_record.hrl starting from OTP-21.3.
 -ifdef(KNOWN_RECORD_TYPE).
-get_tls_state(TLSPid) ->
+get_remote_pid_tls_state(TLSPid) ->
 	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
 	UserPid.
 -else.
-get_tls_state(TLSPid) ->
+get_remote_pid_tls_state(TLSPid) ->
 	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
 	UserPid.
 -endif.
 -endif.
 -else.
-get_tls_state(TLSPid) ->
+get_remote_pid_tls_state(TLSPid) ->
 	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
 	UserPid.
 -endif.
