@@ -129,14 +129,26 @@ get_parent_pid(Pid) ->
 get_remote_pid_tcp(Socket) when is_port(Socket) ->
 	get_remote_pid_tcp(inet:sockname(Socket));
 get_remote_pid_tcp(SockName) ->
+	get_remote_pid_tcp(SockName, 5).
+
+get_remote_pid_tcp(SockName, 0) ->
+	AllPorts = [{P, erlang:port_info(P), (catch inet:peername(P))} || P <- erlang:ports()],
+	error({missing_or_duplicate_ports, SockName, AllPorts});
+get_remote_pid_tcp(SockName, Attempts) ->
 	AllPorts = [{P, erlang:port_info(P)} || P <- erlang:ports()],
-	[Pid] = [
+	Result = [
 		proplists:get_value(connected, I)
 	|| {P, I} <- AllPorts,
 		I =/= undefined,
 		proplists:get_value(name, I) =:= "tcp_inet",
 		inet:peername(P) =:= SockName],
-	Pid.
+	case Result of
+		[Pid] ->
+			Pid;
+		_ ->
+			timer:sleep(10),
+			get_remote_pid_tcp(SockName, Attempts - 1)
+	end.
 
 %% @doc Find the pid of the remote end of a TLS socket.
 %%
