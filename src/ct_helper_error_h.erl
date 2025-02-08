@@ -129,6 +129,23 @@ handle_event(Event = {error, GL,
 			write_event(Event),
 			{ok, State}
 	end;
+%% Cowboy 2.13+: error coming from Cowboy.
+handle_event(Event = {error, GL,
+		{_, "Ranch listener" ++ _, [_, _, _, Pid, {_, [{M, F, A, _}|_]}|_]}},
+		State) when node(GL) =:= node() ->
+	A2 = if is_list(A) -> length(A); true -> A end,
+	Crash = {Pid, M, F, A2},
+	case lists:member(Crash, State) of
+		true ->
+			{ok, lists:delete(Crash, State)};
+		false ->
+			write_event(Event),
+			{ok, State}
+	end;
+handle_event(Event = {error, GL,
+		{_, "Ranch listener" ++ _, [_, _, _, _Pid, ct_helper_ignore|_]}},
+		State) when node(GL) =:= node() ->
+	{ok, State};
 %% Cowboy 1.0.
 handle_event(Event = {error, GL,
 		{_, "Ranch listener" ++ _, [_, _, _, Pid, {cowboy_handler, [_, _, _,
