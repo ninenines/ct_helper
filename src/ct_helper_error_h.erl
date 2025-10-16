@@ -142,7 +142,7 @@ handle_event(Event = {error, GL,
 			write_event(Event),
 			{ok, State}
 	end;
-handle_event(Event = {error, GL,
+handle_event({error, GL,
 		{_, "Ranch listener" ++ _, [_, _, _, _Pid, ct_helper_ignore|_]}},
 		State) when node(GL) =:= node() ->
 	{ok, State};
