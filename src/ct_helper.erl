@@ -129,10 +129,12 @@ get_parent_pid(Pid) ->
 get_remote_pid_tcp(Socket) when is_port(Socket) ->
 	get_remote_pid_tcp(inet:sockname(Socket));
 get_remote_pid_tcp(SockName) ->
-	get_remote_pid_tcp(SockName, 5).
+	get_remote_pid_tcp(SockName, 50).
 
 get_remote_pid_tcp(SockName, 0) ->
-	AllPorts = [{P, erlang:port_info(P), (catch inet:peername(P))} || P <- erlang:ports()],
+	AllPorts = [{P, erlang:port_info(P),
+		try inet:peername(P) catch _:_ -> error end}
+	|| P <- erlang:ports()],
 	error({missing_or_duplicate_ports, SockName, AllPorts});
 get_remote_pid_tcp(SockName, Attempts) ->
 	AllPorts = [{P, erlang:port_info(P)} || P <- erlang:ports()],
@@ -152,35 +154,58 @@ get_remote_pid_tcp(SockName, Attempts) ->
 
 %% @doc Find the pid of the remote end of a TLS socket.
 %%
+%% Note that this function also works when the local end of
+%% the connection is a TCP socket.
+%%
 %% This function must be run on the same node as the pid we want.
+%%
+%% With Ranch, the accepted sslsocket is first owned by ranch_conns_sup
+%% and only later transferred to the protocol process. Before that
+%% transfer completes, the TCP port owner may not be the SSL process
+%% yet, and SSL's user_application may still be ranch_conns_sup.
+%% We retry until we observe the settled protocol process.
 
-get_remote_pid_tls(Socket) ->
-	%% This gives us the pid of the sslsocket process.
-	%% We must introspect this process in order to retrieve the connection pid.
-	TLSPid = get_remote_pid_tcp(ssl:sockname(Socket)),
-	get_remote_pid_tls_state(TLSPid).
+get_remote_pid_tls(Socket) when is_port(Socket) ->
+	get_remote_pid_tls(inet:sockname(Socket));
+get_remote_pid_tls(Socket) when is_record(Socket, sslsocket) ->
+	get_remote_pid_tls(ssl:sockname(Socket));
+get_remote_pid_tls(SockName) ->
+	get_remote_pid_tls(SockName, 50).
+
+get_remote_pid_tls(SockName, 0) ->
+	error({remote_pid_not_found, SockName});
+get_remote_pid_tls(SockName, Attempts) ->
+	try
+		Pid = get_remote_pid_tcp(SockName),
+		get_remote_pid_tls_state(Pid)
+	catch
+		_:_ ->
+			timer:sleep(10),
+			get_remote_pid_tls(SockName, Attempts - 1)
+	end.
 
 -ifdef(OTP_RELEASE).
 -if(?OTP_RELEASE >= 22).
 get_remote_pid_tls_state(TLSPid) ->
-	{_, #state{connection_env=ConnEnv}} = sys:get_state(TLSPid),
+	{_, #state{connection_env=ConnEnv}} = sys:get_state(TLSPid, 100),
 	{_, UserPid} = element(2, ConnEnv), %% #connection_env.user_application
 	UserPid.
 -else.
 %% This is defined in ssl_record.hrl starting from OTP-21.3.
 -ifdef(KNOWN_RECORD_TYPE).
 get_remote_pid_tls_state(TLSPid) ->
-	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}} = sys:get_state(TLSPid),
+	{_, #state{connection_env=#connection_env{user_application={_, UserPid}}}}
+		= sys:get_state(TLSPid, 100),
 	UserPid.
 -else.
 get_remote_pid_tls_state(TLSPid) ->
-	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
+	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid, 100),
 	UserPid.
 -endif.
 -endif.
 -else.
 get_remote_pid_tls_state(TLSPid) ->
-	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid),
+	{_, #state{user_application={_, UserPid}}} = sys:get_state(TLSPid, 100),
 	UserPid.
 -endif.
 
