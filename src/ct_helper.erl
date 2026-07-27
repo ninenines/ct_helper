@@ -40,6 +40,10 @@
 
 -include_lib("ssl/src/ssl_connection.hrl").
 
+-if(?OTP_RELEASE < 28).
+-include_lib("ssl/src/ssl_api.hrl").
+-endif.
+
 %% @doc List all test cases in the suite.
 %%
 %% Functions test and do_* are considered internal and are ignored.
