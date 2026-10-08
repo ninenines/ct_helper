@@ -129,32 +129,44 @@ get_parent_pid(Pid) ->
 %% @doc Find the pid of the remote end of a TCP socket.
 %%
 %% This function must be run on the same node as the pid we want.
+%%
+%% The kernel may give the same ephemeral port to two client
+%% connections as long as they go to different listeners, so
+%% matching on the remote peer name alone can find two ports.
+%% When given a socket we therefore also require the remote
+%% end's local address to be our peer address.
 
 get_remote_pid_tcp(Socket) when is_port(Socket) ->
-	get_remote_pid_tcp(inet:sockname(Socket));
+	get_remote_pid_tcp(inet:sockname(Socket), inet:peername(Socket), 50);
 get_remote_pid_tcp(SockName) ->
-	get_remote_pid_tcp(SockName, 50).
+	get_remote_pid_tcp(SockName, any, 50).
 
-get_remote_pid_tcp(SockName, 0) ->
+get_remote_pid_tcp(SockName, _, 0) ->
 	AllPorts = [{P, erlang:port_info(P),
 		try inet:peername(P) catch _:_ -> error end}
 	|| P <- erlang:ports()],
 	error({missing_or_duplicate_ports, SockName, AllPorts});
-get_remote_pid_tcp(SockName, Attempts) ->
+get_remote_pid_tcp(SockName, PeerName, Attempts) ->
 	AllPorts = [{P, erlang:port_info(P)} || P <- erlang:ports()],
 	Result = [
 		proplists:get_value(connected, I)
 	|| {P, I} <- AllPorts,
 		I =/= undefined,
 		proplists:get_value(name, I) =:= "tcp_inet",
-		inet:peername(P) =:= SockName],
+		inet:peername(P) =:= SockName,
+		is_remote_sockname(P, PeerName)],
 	case Result of
 		[Pid] ->
 			Pid;
 		_ ->
 			timer:sleep(10),
-			get_remote_pid_tcp(SockName, Attempts - 1)
+			get_remote_pid_tcp(SockName, PeerName, Attempts - 1)
 	end.
+
+is_remote_sockname(P, PeerName={ok, _}) ->
+	inet:sockname(P) =:= PeerName;
+is_remote_sockname(_, _) ->
+	true.
 
 %% @doc Find the pid of the remote end of a TLS socket.
 %%
@@ -170,22 +182,22 @@ get_remote_pid_tcp(SockName, Attempts) ->
 %% We retry until we observe the settled protocol process.
 
 get_remote_pid_tls(Socket) when is_port(Socket) ->
-	get_remote_pid_tls(inet:sockname(Socket));
+	get_remote_pid_tls(inet:sockname(Socket), inet:peername(Socket), 50);
 get_remote_pid_tls(Socket) when is_record(Socket, sslsocket) ->
-	get_remote_pid_tls(ssl:sockname(Socket));
+	get_remote_pid_tls(ssl:sockname(Socket), ssl:peername(Socket), 50);
 get_remote_pid_tls(SockName) ->
-	get_remote_pid_tls(SockName, 50).
+	get_remote_pid_tls(SockName, any, 50).
 
-get_remote_pid_tls(SockName, 0) ->
+get_remote_pid_tls(SockName, _, 0) ->
 	error({remote_pid_not_found, SockName});
-get_remote_pid_tls(SockName, Attempts) ->
+get_remote_pid_tls(SockName, PeerName, Attempts) ->
 	try
-		Pid = get_remote_pid_tcp(SockName),
+		Pid = get_remote_pid_tcp(SockName, PeerName, 50),
 		get_remote_pid_tls_state(Pid)
 	catch
 		_:_ ->
 			timer:sleep(10),
-			get_remote_pid_tls(SockName, Attempts - 1)
+			get_remote_pid_tls(SockName, PeerName, Attempts - 1)
 	end.
 
 -ifdef(OTP_RELEASE).
